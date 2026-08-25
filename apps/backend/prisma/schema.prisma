@@ -1,0 +1,252 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum WatchlistType {
+  CUSTOM
+  AI_GENERATED
+}
+
+enum TransactionType {
+  BUY
+  SELL
+}
+
+enum SentimentType {
+  POSITIVE
+  NEGATIVE
+  NEUTRAL
+}
+
+enum ChatRole {
+  user
+  assistant
+}
+
+model User {
+  id           String         @id @default(uuid())
+  email        String         @unique
+  passwordHash String?        @map("password_hash")
+  googleId     String?        @map("google_id")
+  fullName     String         @map("full_name")
+  avatarUrl    String?        @map("avatar_url")
+  createdAt    DateTime       @default(now()) @map("created_at")
+  updatedAt    DateTime       @updatedAt @map("updated_at")
+
+  tokens       RefreshToken[]
+  portfolios   Portfolio[]
+  watchlists   Watchlist[]
+  chatSessions ChatSession[]
+
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  tokenHash String   @map("token_hash")
+  expiresAt DateTime @map("expires_at")
+  revoked   Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("refresh_tokens")
+}
+
+model Stock {
+  id        String   @id @default(uuid())
+  symbol    String   @unique
+  name      String
+  sector    String
+  industry  String
+  exchange  String
+  currency  String   @default("INR")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  prices          StockPrice[]
+  fundamentals    StockFundamental[]
+  holdings        Holding[]
+  transactions    Transaction[]
+  watchlistItems  WatchlistItem[]
+  newsLinks       NewsStockLink[]
+  recommendations AiRecommendation[]
+
+  @@map("stocks")
+}
+
+model StockPrice {
+  id        String   @id @default(uuid())
+  stockId   String   @map("stock_id")
+  timestamp DateTime
+  open      Float
+  high      Float
+  low       Float
+  close     Float
+  volume    Float
+  interval  String   @default("1d")
+
+  stock Stock @relation(fields: [stockId], references: [id], onDelete: Cascade)
+
+  @@index([stockId, timestamp])
+  @@map("stock_prices")
+}
+
+model StockFundamental {
+  id            String   @id @default(uuid())
+  stockId       String   @map("stock_id")
+  peRatio       Float    @map("pe_ratio")
+  pbRatio       Float    @map("pb_ratio")
+  roe           Float
+  roce          Float
+  eps           Float
+  debtToEquity  Float    @map("debt_to_equity")
+  marketCap     Float    @map("market_cap")
+  fiscalPeriod  String   @map("fiscal_period")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  stock Stock @relation(fields: [stockId], references: [id], onDelete: Cascade)
+
+  @@map("stock_fundamentals")
+}
+
+model Portfolio {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  name      String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  holdings     Holding[]
+  transactions Transaction[]
+
+  @@map("portfolios")
+}
+
+model Holding {
+  id          String   @id @default(uuid())
+  portfolioId String   @map("portfolio_id")
+  stockId     String   @map("stock_id")
+  quantity    Float
+  avgBuyPrice Float    @map("avg_buy_price")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  portfolio Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  stock     Stock     @relation(fields: [stockId], references: [id], onDelete: Cascade)
+
+  @@map("holdings")
+}
+
+model Transaction {
+  id          String          @id @default(uuid())
+  portfolioId String          @map("portfolio_id")
+  stockId     String          @map("stock_id")
+  type        TransactionType
+  quantity    Float
+  price       Float
+  executedAt  DateTime        @default(now()) @map("executed_at")
+
+  portfolio Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  stock     Stock     @relation(fields: [stockId], references: [id], onDelete: Cascade)
+
+  @@map("transactions")
+}
+
+model Watchlist {
+  id        String        @id @default(uuid())
+  userId    String        @map("user_id")
+  name      String
+  type      WatchlistType @default(CUSTOM)
+  createdAt DateTime      @default(now()) @map("created_at")
+
+  user  User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items WatchlistItem[]
+
+  @@map("watchlists")
+}
+
+model WatchlistItem {
+  id          String   @id @default(uuid())
+  watchlistId String   @map("watchlist_id")
+  stockId     String   @map("stock_id")
+  addedAt     DateTime @default(now()) @map("added_at")
+
+  watchlist Watchlist @relation(fields: [watchlistId], references: [id], onDelete: Cascade)
+  stock     Stock     @relation(fields: [stockId], references: [id], onDelete: Cascade)
+
+  @@map("watchlist_items")
+}
+
+model NewsArticle {
+  id                  String        @id @default(uuid())
+  title               String
+  source              String
+  url                 String
+  publishedAt         DateTime      @map("published_at")
+  sentiment           SentimentType
+  sentimentConfidence Float         @map("sentiment_confidence")
+  summary             String
+
+  stockLinks NewsStockLink[]
+
+  @@map("news_articles")
+}
+
+model NewsStockLink {
+  id            String @id @default(uuid())
+  newsArticleId String @map("news_article_id")
+  stockId       String @map("stock_id")
+  relevanceScore Float  @map("relevance_score")
+
+  article NewsArticle @relation(fields: [newsArticleId], references: [id], onDelete: Cascade)
+  stock   Stock       @relation(fields: [stockId], references: [id], onDelete: Cascade)
+
+  @@map("news_stock_links")
+}
+
+model AiRecommendation {
+  id                 String   @id @default(uuid())
+  stockId            String   @map("stock_id")
+  overallScore       Float    @map("overall_score")
+  confidence         Float
+  riskRating         String   @map("risk_rating")
+  recommendationText String   @map("recommendation_text")
+  reasoning          Json
+  dataSources        Json     @map("data_sources")
+  generatedAt        DateTime @default(now()) @map("generated_at")
+
+  stock Stock @relation(fields: [stockId], references: [id], onDelete: Cascade)
+
+  @@map("ai_recommendations")
+}
+
+model ChatSession {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  title     String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages ChatMessage[]
+
+  @@map("chat_sessions")
+}
+
+model ChatMessage {
+  id        String   @id @default(uuid())
+  sessionId String   @map("session_id")
+  role      ChatRole
+  content   String
+  metadata  Json?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  session ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@map("chat_messages")
+}
