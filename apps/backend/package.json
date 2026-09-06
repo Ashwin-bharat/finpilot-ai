@@ -4,10 +4,11 @@
   "private": true,
   "scripts": {
     "prisma:generate": "prisma generate",
+    "postinstall": "prisma generate",
     "seed": "ts-node prisma/seed.ts",
     "seed:nse": "ts-node prisma/import-nse-stocks.ts",
     "seed:bse": "ts-node prisma/import-bse-stocks.ts",
-    "build": "nest build",
+    "build": "prisma generate && nest build",
     "start": "nest start",
     "dev": "nest start --watch",
     "start:prod": "node dist/main",
