@@ -14,8 +14,11 @@ import { Response, Request } from 'express';
 import { AuthService } from './auth.service';
 import { SignupDto } from './dto/signup.dto';
 import { LoginDto } from './dto/login.dto';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { GoogleAuthGuard } from './guards/google-auth.guard';
+import { ForgotPasswordRateLimitGuard } from './guards/forgot-password-rate-limit.guard';
 
 function extractRefreshToken(req: Request): string | undefined {
   if (req.cookies && req.cookies['refresh_token']) {
@@ -127,5 +130,24 @@ export class AuthController {
   @Get('me')
   async getMe(@Req() req: any) {
     return req.user;
+  }
+
+  @ApiOperation({ summary: 'Request password reset link via email' })
+  @ApiResponse({ status: 200, description: 'Password reset request acknowledged' })
+  @ApiResponse({ status: 429, description: 'Too many requests' })
+  @UseGuards(ForgotPasswordRateLimitGuard)
+  @HttpCode(HttpStatus.OK)
+  @Post('forgot-password')
+  async forgotPassword(@Body() dto: ForgotPasswordDto) {
+    return this.authService.forgotPassword(dto);
+  }
+
+  @ApiOperation({ summary: 'Reset password using emailed reset token' })
+  @ApiResponse({ status: 200, description: 'Password reset successfully' })
+  @ApiResponse({ status: 400, description: 'Invalid or expired token' })
+  @HttpCode(HttpStatus.OK)
+  @Post('reset-password')
+  async resetPassword(@Body() dto: ResetPasswordDto) {
+    return this.authService.resetPassword(dto);
   }
 }

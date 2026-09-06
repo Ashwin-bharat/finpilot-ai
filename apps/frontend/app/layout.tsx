@@ -1,10 +1,11 @@
 import './globals.css';
-import Navbar from '../components/Navbar';
+import AppShell from '../components/AppShell';
 import { AuthProvider } from '../context/auth-context';
+import { AssetClassProvider } from '../context/asset-class-context';
 
 export const metadata = {
-  title: 'FinPilot AI — Intelligent Stock Market & Portfolio Platform',
-  description: 'AI-assisted financial intelligence, stock analysis, portfolio tracking, and structured reasoning.',
+  title: 'FinPilot AI — Intelligent Multi-Asset & Portfolio Platform',
+  description: 'AI-assisted financial intelligence, equities, cryptocurrency analysis, and real money broker trading.',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -12,10 +13,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body>
         <AuthProvider>
-          <Navbar />
-          <main style={{ maxWidth: '1280px', margin: '0 auto', padding: '2rem 1.5rem' }}>
-            {children}
-          </main>
+          <AssetClassProvider>
+            <AppShell>
+              {children}
+            </AppShell>
+          </AssetClassProvider>
         </AuthProvider>
       </body>
     </html>

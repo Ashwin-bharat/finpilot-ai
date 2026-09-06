@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, ConflictException, BadRequestException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
@@ -6,6 +6,9 @@ import { AuthRepository } from './auth.repository';
 import { UsersService } from '../users/users.service';
 import { SignupDto } from './dto/signup.dto';
 import { LoginDto } from './dto/login.dto';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
+import { MailService } from '../mail/mail.service';
 import { User } from '@prisma/client';
 import { Profile } from 'passport-google-oauth20';
 
@@ -15,6 +18,7 @@ export class AuthService {
     private authRepository: AuthRepository,
     private usersService: UsersService,
     private jwtService: JwtService,
+    private mailService: MailService,
   ) {}
 
   private sanitizeUser(user: User) {
@@ -23,6 +27,7 @@ export class AuthService {
       email: user.email,
       fullName: user.fullName,
       avatarUrl: user.avatarUrl,
+      explanationStyle: user.explanationStyle,
       createdAt: user.createdAt.toISOString(),
     };
   }
@@ -166,5 +171,65 @@ export class AuthService {
     }
 
     return user;
+  }
+
+  async forgotPassword(dto: ForgotPasswordDto): Promise<{ message: string }> {
+    const email = dto.email.toLowerCase().trim();
+    const user = await this.usersService.findByEmail(email);
+
+    // Uniform response prevents email enumeration attacks
+    const successMessage = 'If an account with that email exists, a password reset link has been sent.';
+
+    if (!user) {
+      return { message: successMessage };
+    }
+
+    // Invalidate existing unused tokens for this user
+    await this.authRepository.invalidateUserPasswordResetTokens(user.id);
+
+    // Generate cryptographic 32-byte (64 hex characters) token
+    const rawToken = crypto.randomBytes(32).toString('hex');
+    const tokenHash = this.hashToken(rawToken);
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+
+    await this.authRepository.storePasswordResetToken(user.id, tokenHash, expiresAt);
+
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const resetLink = `${frontendUrl}/reset-password?token=${rawToken}`;
+
+    await this.mailService.sendPasswordResetEmail({
+      to: user.email,
+      resetLink,
+      userName: user.fullName,
+    });
+
+    return { message: successMessage };
+  }
+
+  async resetPassword(dto: ResetPasswordDto): Promise<{ message: string }> {
+    if (!dto.token || !dto.newPassword) {
+      throw new BadRequestException('Token and new password are required');
+    }
+
+    const tokenHash = this.hashToken(dto.token);
+    const tokenRecord = await this.authRepository.findValidPasswordResetToken(tokenHash);
+
+    if (!tokenRecord) {
+      throw new BadRequestException('Invalid or expired password reset token');
+    }
+
+    // Hash the new password securely
+    const passwordHash = await bcrypt.hash(dto.newPassword, 10);
+
+    // Update password in DB
+    await this.usersService.updatePassword(tokenRecord.userId, passwordHash);
+
+    // Invalidate this reset token
+    await this.authRepository.markPasswordResetTokenUsed(tokenRecord.id);
+
+    // Revoke all existing refresh tokens for this user (force logout on all devices)
+    await this.authRepository.revokeAllUserRefreshTokens(tokenRecord.userId);
+
+    return { message: 'Password has been reset successfully. Please log in with your new password.' };
   }
 }

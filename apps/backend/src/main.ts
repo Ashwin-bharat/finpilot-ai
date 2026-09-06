@@ -9,7 +9,16 @@ async function bootstrap() {
   const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
   app.enableCors({
     origin: (origin, callback) => {
-      if (!origin || /^http:\/\/localhost:\d+$/.test(origin)) {
+      if (
+        !origin ||
+        /^https?:\/\/localhost(:\d+)?$/.test(origin) ||
+        /^https?:\/\/127\.0\.0\.1(:\d+)?$/.test(origin) ||
+        origin.endsWith('.trycloudflare.com') ||
+        origin.endsWith('.loca.lt') ||
+        origin.endsWith('.ngrok-free.app') ||
+        (frontendUrl && origin === frontendUrl) ||
+        process.env.NODE_ENV !== 'production'
+      ) {
         callback(null, true);
       } else {
         callback(new Error('Not allowed by CORS'));
@@ -37,7 +46,7 @@ async function bootstrap() {
   SwaggerModule.setup('api/v1/docs', app, document);
 
   const port = process.env.PORT || 4000;
-  await app.listen(port);
+  await app.listen(port, '0.0.0.0');
   console.log(`FinPilot AI Backend running on http://localhost:${port}`);
   console.log(`Swagger Docs available on http://localhost:${port}/api/v1/docs`);
 }

@@ -10,13 +10,22 @@ export class IndicatorsService {
     @Inject(MARKET_DATA_PROVIDER) private readonly marketDataProvider: MarketDataProvider,
   ) {}
 
-  async calculateIndicators(symbol: string): Promise<TechnicalIndicators> {
+  async calculateIndicators(
+    symbol: string,
+    providedHistory?: StockPricePoint[],
+    providedCurrentPrice?: number,
+  ): Promise<TechnicalIndicators> {
     const cleanSymbol = symbol.toUpperCase();
 
-    // Fetch quote for current price and 1-year history for computing indicators
+    // Use provided snapshot if available to guarantee consistent OHLCV data across engines in a single query;
+    // otherwise fetch quote and 1-year history from the market data provider.
     const [quote, history] = await Promise.all([
-      this.marketDataProvider.getQuote(cleanSymbol),
-      this.marketDataProvider.getHistory(cleanSymbol, '1y'),
+      providedCurrentPrice !== undefined
+        ? Promise.resolve({ currentPrice: providedCurrentPrice })
+        : this.marketDataProvider.getQuote(cleanSymbol),
+      providedHistory !== undefined
+        ? Promise.resolve(providedHistory)
+        : this.marketDataProvider.getHistory(cleanSymbol, '1y'),
     ]);
 
     const currentPrice = quote.currentPrice || 1000;

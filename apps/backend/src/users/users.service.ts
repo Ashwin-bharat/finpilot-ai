@@ -25,4 +25,12 @@ export class UsersService {
   async updateGoogleId(id: string, googleId: string, avatarUrl?: string): Promise<User> {
     return this.usersRepository.updateGoogleId(id, googleId, avatarUrl);
   }
+
+  async updateExplanationStyle(id: string, explanationStyle: 'BEGINNER' | 'ADVANCED'): Promise<User> {
+    return this.usersRepository.updateExplanationStyle(id, explanationStyle);
+  }
+
+  async updatePassword(id: string, passwordHash: string): Promise<User> {
+    return this.usersRepository.updatePassword(id, passwordHash);
+  }
 }

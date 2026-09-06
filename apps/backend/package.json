@@ -5,6 +5,8 @@
   "scripts": {
     "prisma:generate": "prisma generate",
     "seed": "ts-node prisma/seed.ts",
+    "seed:nse": "ts-node prisma/import-nse-stocks.ts",
+    "seed:bse": "ts-node prisma/import-bse-stocks.ts",
     "build": "nest build",
     "start": "nest start",
     "dev": "nest start --watch",
@@ -17,6 +19,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.120.0",
+    "@google/generative-ai": "^0.24.0",
     "@finpilot/shared-types": "*",
     "@finpilot/shared-utils": "*",
     "@nestjs/common": "^10.3.0",
@@ -29,6 +32,7 @@
     "bcrypt": "^5.1.1",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.1",
+    "otplib": "^13.5.0",
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0",
     "passport-jwt": "^4.0.1",

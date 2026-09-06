@@ -9,6 +9,7 @@ dist
 out
 build
 *.tsbuildinfo
+.turbo
 
 # Environment variables
 .env

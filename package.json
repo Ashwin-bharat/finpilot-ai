@@ -13,7 +13,8 @@
     "test": "turbo run test",
     "type-check": "turbo run type-check",
     "prisma:generate": "npm --prefix apps/backend run prisma:generate",
-    "prisma:migrate": "npm --prefix apps/backend run prisma:migrate"
+    "prisma:migrate": "npm --prefix apps/backend run prisma:migrate",
+    "share": "cloudflared tunnel --url http://localhost:3000"
   },
   "devDependencies": {
     "turbo": "^2.4.0"

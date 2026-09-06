@@ -193,7 +193,9 @@ export class YahooMarketDataProvider implements MarketDataProvider {
       this.logger.warn(
         `YahooMarketDataProvider.getHistory failed for ${symbol}: ${err.message}. Falling back to MockMarketDataProvider.`,
       );
-      return this.fallbackProvider.getHistory(symbol, range);
+      const fallbackPoints = await this.fallbackProvider.getHistory(symbol, range);
+      this.setCached(cacheKey, fallbackPoints, 60 * 1000);
+      return fallbackPoints;
     }
   }
 

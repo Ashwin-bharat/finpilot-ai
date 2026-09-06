@@ -24,6 +24,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const refreshSession = useCallback(async () => {
     try {
       setLoading(true);
+
+      // Check if redirected from OAuth with ?token=...
+      if (typeof window !== 'undefined') {
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlToken = urlParams.get('token');
+        if (urlToken) {
+          try {
+            const profile = await getMeApi(urlToken);
+            setUser(profile);
+            setAccessToken(urlToken);
+            const cleanUrl = window.location.pathname;
+            window.history.replaceState({}, document.title, cleanUrl);
+            setLoading(false);
+            return;
+          } catch {
+            // Fallback to standard refresh if URL token is rejected
+          }
+        }
+      }
+
       const data = await refreshApi();
       setUser(data.user);
       setAccessToken(data.tokens.accessToken);

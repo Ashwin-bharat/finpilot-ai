@@ -196,4 +196,29 @@ describe('IndicatorsService - Technical Analysis Unit Tests', () => {
       expect(result.macd.interpretation).toContain('Limited historical data');
     });
   });
+
+  describe('4. Provided Snapshot Reuse (Single-Query Consistency)', () => {
+    it('should directly utilize providedHistory and providedCurrentPrice without querying marketDataProvider', async () => {
+      const customHistory = Array.from({ length: 60 }, (_, i) => ({
+        timestamp: `2026-01-${(i % 28) + 1}`,
+        open: 2000 + i,
+        high: 2010 + i,
+        low: 1990 + i,
+        close: 2000 + i,
+        volume: 50000,
+      }));
+
+      const result = await service.calculateIndicators('CUSTOM.NS', customHistory, 2059);
+
+      // Verify that marketDataProvider was NOT called when snapshots were provided
+      expect(mockMarketDataProvider.getQuote).not.toHaveBeenCalled();
+      expect(mockMarketDataProvider.getHistory).not.toHaveBeenCalled();
+
+      // Verify calculation derives from custom snapshot
+      expect(result.symbol).toBe('CUSTOM.NS');
+      expect(result.sma50.value).toBeGreaterThan(2000);
+      expect(result.rsi.value).toBeDefined();
+      expect(result.macd).toBeDefined();
+    });
+  });
 });

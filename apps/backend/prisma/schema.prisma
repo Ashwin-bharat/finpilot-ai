@@ -28,22 +28,90 @@ enum ChatRole {
   assistant
 }
 
-model User {
-  id           String         @id @default(uuid())
-  email        String         @unique
-  passwordHash String?        @map("password_hash")
-  googleId     String?        @map("google_id")
-  fullName     String         @map("full_name")
-  avatarUrl    String?        @map("avatar_url")
-  createdAt    DateTime       @default(now()) @map("created_at")
-  updatedAt    DateTime       @updatedAt @map("updated_at")
+enum TradingMode {
+  PAPER
+  LIVE
+}
 
-  tokens       RefreshToken[]
-  portfolios   Portfolio[]
-  watchlists   Watchlist[]
-  chatSessions ChatSession[]
+enum ExplanationStyle {
+  BEGINNER
+  ADVANCED
+}
+
+model User {
+  id                 String            @id @default(uuid())
+  email              String            @unique
+  passwordHash       String?           @map("password_hash")
+  googleId           String?           @map("google_id")
+  fullName           String            @map("full_name")
+  avatarUrl          String?           @map("avatar_url")
+  tradingMode        TradingMode       @default(PAPER) @map("trading_mode")
+  liveTradingEnabled Boolean           @default(false) @map("live_trading_enabled")
+  cryptoTradingMode        TradingMode       @default(PAPER) @map("crypto_trading_mode")
+  cryptoLiveTradingEnabled Boolean           @default(false) @map("crypto_live_trading_enabled")
+  explanationStyle   ExplanationStyle  @default(BEGINNER) @map("explanation_style")
+  createdAt          DateTime          @default(now()) @map("created_at")
+  updatedAt          DateTime          @updatedAt @map("updated_at")
+
+  tokens                 RefreshToken[]
+  portfolios             Portfolio[]
+  watchlists             Watchlist[]
+  chatSessions           ChatSession[]
+  brokerCredentials      BrokerCredential[]
+  brokerOrders           BrokerOrder[]
+  wallet                 Wallet?
+  cryptoPortfolios       CryptoPortfolio[]
+  cryptoWatchlists       CryptoWatchlist[]
+  cryptoBrokerCredential CryptoBrokerCredential?
+  cryptoBrokerOrders     CryptoBrokerOrder[]
+  passwordResetTokens    PasswordResetToken[]
 
   @@map("users")
+}
+
+enum WalletTransactionType {
+  TOPUP
+  PAPER_TRADE_DEBIT
+  PAPER_TRADE_CREDIT
+}
+
+enum WalletTransactionStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+model Wallet {
+  id        String   @id @default(uuid())
+  userId    String   @unique @map("user_id")
+  balance   Float    @default(0.0)
+  currency  String   @default("INR")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions WalletTransaction[]
+
+  @@map("wallets")
+}
+
+model WalletTransaction {
+  id                String                  @id @default(uuid())
+  walletId          String                  @map("wallet_id")
+  type              WalletTransactionType
+  amount            Float
+  status            WalletTransactionStatus @default(SUCCESS)
+  description       String?
+  razorpayOrderId   String?                 @map("razorpay_order_id")
+  razorpayPaymentId String?                 @map("razorpay_payment_id")
+  razorpaySignature String?                 @map("razorpay_signature")
+  referenceTradeId  String?                 @map("reference_trade_id")
+  createdAt         DateTime                @default(now()) @map("created_at")
+
+  wallet Wallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
+
+  @@index([walletId, createdAt])
+  @@map("wallet_transactions")
 }
 
 model RefreshToken {
@@ -57,6 +125,21 @@ model RefreshToken {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("refresh_tokens")
+}
+
+model PasswordResetToken {
+  id        String    @id @default(uuid())
+  userId    String    @map("user_id")
+  tokenHash String    @unique @map("token_hash")
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([tokenHash])
+  @@map("password_reset_tokens")
 }
 
 model Stock {
@@ -77,6 +160,8 @@ model Stock {
   newsLinks       NewsStockLink[]
   recommendations AiRecommendation[]
 
+  @@index([name])
+  @@index([symbol, name])
   @@map("stocks")
 }
 
@@ -249,4 +334,184 @@ model ChatMessage {
   session ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
   @@map("chat_messages")
+}
+
+model BrokerCredential {
+  id                    String    @id @default(uuid())
+  userId                String    @map("user_id")
+  brokerName            String    @default("ANGEL_ONE") @map("broker_name")
+  clientCode            String?   @map("client_code")
+  encryptedPin          String?   @map("encrypted_pin")
+  encryptedTotpSecret   String?   @map("encrypted_totp_secret")
+  encryptedApiKey       String    @map("encrypted_api_key")
+  encryptedApiSecret    String?   @map("encrypted_api_secret")
+  encryptedJwtToken     String?   @map("encrypted_jwt_token")
+  encryptedRefreshToken  String?   @map("encrypted_refresh_token")
+  encryptedFeedToken    String?   @map("encrypted_feed_token")
+  sessionExpiresAt      DateTime? @map("session_expires_at")
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, brokerName])
+  @@map("broker_credentials")
+}
+
+model BrokerOrder {
+  id              String          @id @default(uuid())
+  userId          String          @map("user_id")
+  symbol          String
+  transactionType TransactionType @map("transaction_type")
+  quantity        Float
+  price           Float
+  orderType       String          @default("MARKET") @map("order_type")
+  tradingMode     TradingMode     @map("trading_mode")
+  brokerOrderId   String?         @map("broker_order_id")
+  status          String          @default("PENDING")
+  statusMessage   String?         @map("status_message")
+  executedAt      DateTime        @default(now()) @map("executed_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("broker_orders")
+}
+
+model CryptoAsset {
+  id        String   @id @default(uuid())
+  symbol    String   @unique
+  name      String
+  category  String?
+  addedAt   DateTime @default(now()) @map("added_at")
+
+  prices          CryptoPrice[]
+  holdings        CryptoHolding[]
+  transactions    CryptoTransaction[]
+  watchlistItems  CryptoWatchlistItem[]
+
+  @@index([name])
+  @@index([symbol, name])
+  @@map("crypto_assets")
+}
+
+model CryptoPrice {
+  id            String   @id @default(uuid())
+  cryptoAssetId String   @map("crypto_asset_id")
+  timestamp     DateTime
+  open          Float
+  high          Float
+  low           Float
+  close         Float
+  volume        Float
+  interval      String   @default("1d")
+
+  cryptoAsset CryptoAsset @relation(fields: [cryptoAssetId], references: [id], onDelete: Cascade)
+
+  @@index([cryptoAssetId, timestamp])
+  @@map("crypto_prices")
+}
+
+model CryptoPortfolio {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  name      String   @default("Crypto Portfolio")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  holdings     CryptoHolding[]
+  transactions CryptoTransaction[]
+
+  @@map("crypto_portfolios")
+}
+
+model CryptoHolding {
+  id                String   @id @default(uuid())
+  cryptoPortfolioId String   @map("crypto_portfolio_id")
+  cryptoAssetId     String   @map("crypto_asset_id")
+  quantity          Float
+  avgBuyPrice       Float    @map("avg_buy_price")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  cryptoPortfolio CryptoPortfolio @relation(fields: [cryptoPortfolioId], references: [id], onDelete: Cascade)
+  cryptoAsset     CryptoAsset     @relation(fields: [cryptoAssetId], references: [id], onDelete: Cascade)
+
+  @@index([cryptoPortfolioId, cryptoAssetId])
+  @@map("crypto_holdings")
+}
+
+model CryptoTransaction {
+  id                String          @id @default(uuid())
+  cryptoPortfolioId String          @map("crypto_portfolio_id")
+  cryptoAssetId     String          @map("crypto_asset_id")
+  type              TransactionType
+  quantity          Float
+  price             Float
+  executedAt        DateTime        @default(now()) @map("executed_at")
+
+  cryptoPortfolio CryptoPortfolio @relation(fields: [cryptoPortfolioId], references: [id], onDelete: Cascade)
+  cryptoAsset     CryptoAsset     @relation(fields: [cryptoAssetId], references: [id], onDelete: Cascade)
+
+  @@index([cryptoPortfolioId, executedAt])
+  @@map("crypto_transactions")
+}
+
+model CryptoWatchlist {
+  id        String        @id @default(uuid())
+  userId    String        @map("user_id")
+  name      String
+  type      WatchlistType @default(CUSTOM)
+  createdAt DateTime      @default(now()) @map("created_at")
+
+  user  User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items CryptoWatchlistItem[]
+
+  @@map("crypto_watchlists")
+}
+
+model CryptoWatchlistItem {
+  id                String   @id @default(uuid())
+  cryptoWatchlistId String   @map("crypto_watchlist_id")
+  cryptoAssetId     String   @map("crypto_asset_id")
+  addedAt           DateTime @default(now()) @map("added_at")
+
+  cryptoWatchlist CryptoWatchlist @relation(fields: [cryptoWatchlistId], references: [id], onDelete: Cascade)
+  cryptoAsset     CryptoAsset     @relation(fields: [cryptoAssetId], references: [id], onDelete: Cascade)
+
+  @@unique([cryptoWatchlistId, cryptoAssetId])
+  @@map("crypto_watchlist_items")
+}
+
+model CryptoBrokerCredential {
+  id                 String    @id @default(uuid())
+  userId             String    @unique @map("user_id")
+  brokerName         String    @default("COINDCX") @map("broker_name")
+  encryptedApiKey    String    @map("encrypted_api_key")
+  encryptedApiSecret String    @map("encrypted_api_secret")
+  sessionExpiresAt   DateTime? @map("session_expires_at")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("crypto_broker_credentials")
+}
+
+model CryptoBrokerOrder {
+  id              String          @id @default(uuid())
+  userId          String          @map("user_id")
+  symbol          String
+  transactionType TransactionType @map("transaction_type")
+  quantity        Float
+  price           Float
+  orderType       String          @default("MARKET") @map("order_type")
+  tradingMode     TradingMode     @map("trading_mode")
+  brokerOrderId   String?         @map("broker_order_id")
+  status          String          @default("PENDING")
+  statusMessage   String?         @map("status_message")
+  executedAt      DateTime        @default(now()) @map("executed_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("crypto_broker_orders")
 }

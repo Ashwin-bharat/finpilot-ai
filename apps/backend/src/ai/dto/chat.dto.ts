@@ -16,4 +16,9 @@ export class ChatMessageDto {
   @IsString()
   @IsOptional()
   symbolContext?: string;
+
+  @ApiPropertyOptional({ example: 'BEGINNER', enum: ['BEGINNER', 'ADVANCED'], description: 'Optional override for explanation style' })
+  @IsString()
+  @IsOptional()
+  explanationStyle?: 'BEGINNER' | 'ADVANCED';
 }

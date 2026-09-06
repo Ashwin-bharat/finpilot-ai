@@ -39,4 +39,20 @@ export class UsersRepository {
       },
     });
   }
+
+  async updateExplanationStyle(id: string, explanationStyle: 'BEGINNER' | 'ADVANCED'): Promise<User> {
+    return this.prisma.user.update({
+      where: { id },
+      data: {
+        explanationStyle: explanationStyle as any,
+      },
+    });
+  }
+
+  async updatePassword(id: string, passwordHash: string): Promise<User> {
+    return this.prisma.user.update({
+      where: { id },
+      data: { passwordHash },
+    });
+  }
 }

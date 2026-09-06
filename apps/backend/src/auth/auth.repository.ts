@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { RefreshToken } from '@prisma/client';
+import { RefreshToken, PasswordResetToken } from '@prisma/client';
 
 @Injectable()
 export class AuthRepository {
@@ -40,6 +40,43 @@ export class AuthRepository {
         revoked: false,
       },
       data: { revoked: true },
+    });
+  }
+
+  async storePasswordResetToken(userId: string, tokenHash: string, expiresAt: Date): Promise<PasswordResetToken> {
+    return this.prisma.passwordResetToken.create({
+      data: {
+        userId,
+        tokenHash,
+        expiresAt,
+      },
+    });
+  }
+
+  async findValidPasswordResetToken(tokenHash: string): Promise<PasswordResetToken | null> {
+    return this.prisma.passwordResetToken.findFirst({
+      where: {
+        tokenHash,
+        usedAt: null,
+        expiresAt: { gt: new Date() },
+      },
+    });
+  }
+
+  async markPasswordResetTokenUsed(id: string): Promise<PasswordResetToken> {
+    return this.prisma.passwordResetToken.update({
+      where: { id },
+      data: { usedAt: new Date() },
+    });
+  }
+
+  async invalidateUserPasswordResetTokens(userId: string) {
+    return this.prisma.passwordResetToken.updateMany({
+      where: {
+        userId,
+        usedAt: null,
+      },
+      data: { usedAt: new Date() },
     });
   }
 }

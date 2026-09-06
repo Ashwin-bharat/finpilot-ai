@@ -22,6 +22,7 @@ describe('LoginPage - Smoke Test', () => {
     expect(screen.getByLabelText(/Email Address/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Password/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Sign In/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Forgot password\?/i })).toBeInTheDocument();
   });
 
   it('allows user to enter email and password into input fields', () => {

@@ -92,7 +92,14 @@ export class MockMarketDataProvider implements MarketDataProvider {
     return stock;
   }
 
+  private readonly historyCache = new Map<string, StockPricePoint[]>();
+
   async getHistory(symbol: string, range: string = '1m'): Promise<StockPricePoint[]> {
+    const key = `${symbol.toUpperCase()}:${range.toLowerCase()}`;
+    if (this.historyCache.has(key)) {
+      return this.historyCache.get(key)!;
+    }
+
     const stock = this.mockStocks.find((s) => s.symbol.toUpperCase() === symbol.toUpperCase());
     const basePrice = stock ? stock.currentPrice || 1000 : 1000;
 
@@ -104,7 +111,7 @@ export class MockMarketDataProvider implements MarketDataProvider {
     else if (normalizedRange === '1y') pointsCount = 250;
     else if (normalizedRange === '5y') pointsCount = 500;
 
-    return Array.from({ length: pointsCount }).map((_, i) => {
+    const points = Array.from({ length: pointsCount }).map((_, i) => {
       const d = new Date();
       d.setDate(d.getDate() - (pointsCount - i));
       const variation = (Math.sin(i) * 0.03 + Math.sin(i * 2) * 0.01) * basePrice;
@@ -118,6 +125,9 @@ export class MockMarketDataProvider implements MarketDataProvider {
         volume: Math.floor(1000000 + Math.random() * 5000000),
       };
     });
+
+    this.historyCache.set(key, points);
+    return points;
   }
 
   async getTopMovers(): Promise<TopMoversResponse> {

@@ -27,6 +27,13 @@ export class MarketController {
     return this.marketService.getIndicators(symbol);
   }
 
+  @ApiOperation({ summary: 'Fuzzy and prefix search stock symbols and company names across official NSE database' })
+  @ApiResponse({ status: 200, description: 'Matching stocks list returned' })
+  @Get('stocks/search')
+  async searchStocks(@Query('q') q?: string) {
+    return this.marketService.searchStocks(q);
+  }
+
   @ApiOperation({ summary: 'Get full stock details, historical prices, and authentic fundamentals' })
   @ApiResponse({ status: 200, description: 'Stock details and fundamentals retrieved' })
   @Get('stocks/:symbol')
