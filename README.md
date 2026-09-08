@@ -20,10 +20,6 @@ A full-stack, AI-powered investment intelligence platform for the Indian equity 
 - **UPI wallet funding** (Razorpay) for paper trading balances
 - **Cryptocurrency module** — CoinDCX-backed data and trading, kept architecturally separate from equities (no shared fundamentals model, since DCF/Piotroski don't apply to crypto)
 
-## Screenshots
-
-*(add 3-4 screenshots here — dashboard, AI assistant response, stock detail page, and the green CI checkmark)*
-
 ## Tech stack
 
 **Frontend** — Next.js 15, React, TypeScript, Tailwind CSS, `lightweight-charts`
